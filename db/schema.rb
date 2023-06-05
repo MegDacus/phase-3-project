@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2023_06_02_081310) do
+ActiveRecord::Schema.define(version: 2023_06_05_072325) do
 
   create_table "bookshelves", force: :cascade do |t|
     t.string "title"
@@ -20,6 +20,7 @@ ActiveRecord::Schema.define(version: 2023_06_02_081310) do
     t.integer "price"
     t.integer "isbn"
     t.integer "user_id"
+    t.string "google_book_id"
   end
 
   create_table "users", force: :cascade do |t|
