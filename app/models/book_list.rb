@@ -13,11 +13,18 @@ class BookList
     end
 
     def get_books
-        url = "https://www.googleapis.com/books/v1/volumes?q=#{self.search_category}#{self.search_term}&maxResults=#{self.max}&filter=paid-ebooks"
-    
-        uri = URI.parse(url)
-        response = Net::HTTP.get_response(uri)
-        JSON.parse(response.body)
+        begin
+            url = "https://www.googleapis.com/books/v1/volumes?q=#{self.search_category}#{self.search_term}&maxResults=#{self.max}&filter=paid-ebooks"
+        rescue NoMethodError => e
+            e.set_backtrace([])
+            puts "Error Message: #{e.message}"
+            # puts "Oh no! Something has gone wrong with your search. You may need to try a different search term."
+            # BookstoreApp.display_menu
+        else
+            uri = URI.parse(url)
+            response = Net::HTTP.get_response(uri)
+            JSON.parse(response.body)
+        end
     end
     
     def print_books
@@ -32,31 +39,4 @@ class BookList
             puts "Summary:".bold+" #{items["volumeInfo"]["description"]}"
         end
     end
-
-    # def get_books_by_author(author)
-    #     self.print_books("inauthor:#{author}")
-    # end
-
-    # def get_books_by_category(category)
-    #     self.print_books("subject:#{category}")
-    # end
-
-    # def get_books_by_title(title)
-    #     self.print_books("intitle:#{title}")
-    # end
-
-    # def add_filter(filter)
-    #     if filter == "download"
-    #         get_books("download=epub")
-    #     end
-    # end
-
-    # def filter_downloadable_books
-    #     #Filter by: partial-parts of the text are previewable
-    #     #full - all the text is viewable
-    #     #free-ebooks - free Google eBooks
-    #     #paid-ebooks - Google eBooks with a price
-    #     #ebooks - Google eBooks paid or free. Does not return limited preview or not for sale items, or magazines
-    #     get_books("filter=#{filter}")
-    # end
 end

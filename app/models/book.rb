@@ -5,9 +5,10 @@ require 'colorize'
 require 'box_puts'
 require_relative '../../config/environment.rb'
 require_relative './bookstore_app'
+require 'tty-prompt'
 
 class Book
-    attr_reader :book_id, :summary, :price, :title, :author, :isbn, :categories
+    attr_reader :book_id, :summary, :price, :title, :author, :isbn, :categories, :info_link
     def initialize(book_id)
         @book_id = book_id
         self.get_book_details
@@ -37,6 +38,8 @@ class Book
         price = retail_price["amount"]
         currency = retail_price["currencyCode"]
         @price = price
+
+        @info_link = info["volumeInfo"]["infoLink"]
     end
 
     def print_book_details
@@ -50,35 +53,54 @@ class Book
                 "Average Price: $#{self.price}"]
         )
         
-        puts "________________________".blue
-        puts "Please select an action item from the list below:"
+        puts "________________________".cyan
+        puts ""
         self.class.display_book_menu
     end
     
     def self.display_book_menu 
-        puts "________________________".blue
-        puts "BOOK MENU"
-        puts "summary -- returns summary of book"
-        puts "reviews -- returns list of reviews"
-        puts "buy -- returns list of locations to buy a book"
-        puts "save -- saves book to your bookshelf"
-        puts "exit -- back to main menu"
-        puts "________________________".blue
-        puts "Enter selection here:"
-        response = gets.chomp
-        case response
-        when "summary"
-            puts "Summary:".bold + "#{@@book_instance.summary}"
-        when "reviews"
-            puts "Will return reviews when functioning"
-        when "buy"
-            puts "will return where to buy"
-        when "save"
-            @@book_instance.save_book
-        when "exit"
-            BookstoreApp.display_menu
+        prompt = TTY::Prompt.new(active_color: :cyan)
+        choices = [
+            {name: "Summary -- Returns summary of book", value: 1},
+            {name: "Link -- Provides a link to the Google Books page with more info", value: 2},
+            {name: "Save -- Saves book to your personal bookshelf", value: 3},
+            {name: "Exit -- Back to main menu", value: 4}
+        ]
+        user_input = prompt.select("Book Menu", choices, cycle: true, symbols: {marker: "→"})
+
+        begin
+    
+            case user_input
+            when 1
+                puts "Summary:".bold + "#{@@book_instance.summary}"
+                self.return_to_main_menu
+            when 2
+                puts TTY::Link.link_to("Click here for more info ", "#{@@book_instance.info_link}")
+                self.return_to_main_menu
+            when 3
+                @@book_instance.save_book
+                self.return_to_main_menu
+            when 4
+                BookstoreApp.display_menu
+            else 
+                puts "Error: You have entered an invalid response"
+                self.display_book_menu
+            end
+
+        rescue Errno::ENOENT
+            puts "Unfortunately, Google Books doesn't hold the information you are requesting for this book."
         end
-        
+
+    end
+
+    def self.return_to_main_menu
+        response = prompt.yes?("Would you like to return to the main menu?")
+        case response
+        when true
+            BookstoreApp.display_menu
+        when false
+            self.display_book_menu
+        end
     end
 
     def save_book
@@ -92,7 +114,7 @@ class Book
                 user_id: $current_user.id, #fix this later - global variables are bad practice
                 google_book_id: book_id
             )
-            puts "#{self.title} has been added to your personal bookshelf.".bold.blue
+            puts "#{self.title} has been added to your personal bookshelf.".bold.cyan
             
             self.class.display_book_menu
     end

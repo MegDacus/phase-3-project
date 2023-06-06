@@ -8,4 +8,8 @@ require_relative '../app/models/book.rb'
 require_relative '../app/models/user.rb'
 require_relative '../app/models/bookshelf.rb'
 require_relative '../app/models/book_list.rb'
+require 'active_record'
+
+ActiveRecord::Base.logger = nil
+
 
