@@ -8,6 +8,7 @@ require_relative './bookstore_app'
 require 'tty-prompt'
 
 class Book
+    prompt = TTY::Prompt.new(active_color: :cyan)
     attr_reader :book_id, :summary, :price, :title, :author, :isbn, :categories, :info_link
     def initialize(book_id)
         @book_id = book_id
@@ -30,16 +31,28 @@ class Book
         @isbn = info["volumeInfo"]["industryIdentifiers"].select{|isbn| isbn["type"] == "ISBN_10"}[0]["identifier"]
         @summary = info["volumeInfo"]["description"].gsub(/<[^>]*>/, "")
 
-        categories_string = info["volumeInfo"]["categories"].join(" / ")
-        unique_categories = categories_string.split(" / ").uniq.join(" / ")
-        @categories = unique_categories
+        if info["volumeInfo"]["categories"].nil?
+            @categories = "No categories listed"
+        else
+            categories_string = info["volumeInfo"]["categories"].join(" / ")
+            unique_categories = categories_string.split(" / ").uniq.join(" / ")
+            @categories = unique_categories
+        end
 
-        retail_price = info["saleInfo"]["listPrice"]
-        price = retail_price["amount"]
-        currency = retail_price["currencyCode"]
-        @price = price
+        if info["saleInfo"]["listPrice"].nil?
+            @price = "No price listed"
+        else
+            retail_price = info["saleInfo"]["listPrice"]
+            price = retail_price["amount"]
+            currency = retail_price["currencyCode"]
+            @price = price
+        end
 
-        @info_link = info["volumeInfo"]["infoLink"]
+        if info["volumeInfo"]["infoLink"].nil?
+            @info_link = "No link listed"
+        else 
+            @info_link = info["volumeInfo"]["infoLink"]
+        end
     end
 
     def print_book_details
@@ -50,7 +63,7 @@ class Book
                 "Author: #{self.author}",
                 "Categories: #{self.categories}",
                 "ISBN: #{self.isbn}",
-                "Average Price: $#{self.price}"]
+                "Average Price: $ #{self.price}"]
         )
         
         puts "________________________".cyan
@@ -79,7 +92,6 @@ class Book
                 self.return_to_main_menu
             when 3
                 @@book_instance.save_book
-                self.return_to_main_menu
             when 4
                 BookstoreApp.display_menu
             else 
@@ -94,6 +106,7 @@ class Book
     end
 
     def self.return_to_main_menu
+        prompt = TTY::Prompt.new(active_color: :cyan)
         response = prompt.yes?("Would you like to return to the main menu?")
         case response
         when true
@@ -116,7 +129,7 @@ class Book
             )
             puts "#{self.title} has been added to your personal bookshelf.".bold.cyan
             
-            self.class.display_book_menu
+            BookstoreApp.display_bookshelf
     end
 end
 

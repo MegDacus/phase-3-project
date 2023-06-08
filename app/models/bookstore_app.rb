@@ -4,11 +4,13 @@ require_relative './user'
 require_relative './book_list.rb'
 require_relative './book'
 require "tty-prompt"
+require "curses"
 
 class BookstoreApp 
     @@personal_bookshelf = []
     
     def self.start_app
+        prompt = TTY::Prompt.new(active_color: :cyan)
         puts "Welcome to our bookstore!"
         
         bookshelf_color = Pastel.new.white.on_black.bold.detach
@@ -25,13 +27,34 @@ class BookstoreApp
             ^--^---'--^`---^-^--^--^---'--'-'         ")
             bookshelf_img.each_char {|c| putc c ; sleep 0.0030}
             puts ""
-            puts "Please enter your first name:"
-            first_name = gets.chomp
-            puts "Please enter your last name:"
-            last_name = gets.chomp
+            first_name = prompt.ask("Please enter your first name:")
+            last_name = prompt.ask("Please enter your last name:")
             $current_user = User.find_or_create_by(first_name: first_name, last_name: last_name)
+    end
+
+    def self.display_bookshelf
+        prompt = TTY::Prompt.new(active_color: :cyan)
+        i = 0
+        bookshelf = Bookshelf.where(user_id: $current_user.id)
+
+        if bookshelf.empty?
+            prompt.ok("Your bookshelf is currently empty!")
+        else
+            bookshelf.each do |book|
+            @@personal_bookshelf << book
+            BoxPuts.show(
+                :align => "center",
+                :title => "Book #{i += 1}",
+                :lines => ["Title: #{book.title}",
+                    "Author: #{book.author}",
+                    "Categories: #{book.categories}",
+                    "ISBN: #{book.isbn}",
+                    "Average Price: $#{book.price}"]
+            )
+            end
         end
-        
+        self.display_bookshelf_menu
+    end
         
     def self.display_menu
         help_color = Pastel.new.blue.italic.detach
@@ -39,7 +62,8 @@ class BookstoreApp
         choices = [
             {name: 'Search'.bold+' -- search for books by author, genre, or title', value: 1},
             {name: 'Bookshelf'.bold+' --returns your personal bookshelf', value: 2},
-            {name: 'Bookshelf Menu'.bold+' -- Lists bookshelf commands', value: 3}
+            {name: 'Bookshelf Menu'.bold+' -- Lists bookshelf commands', value: 3},
+            {name: 'Exit'.bold+' -- Exit the bookstore', value: 4}
         ]
 
         user_input = prompt.select("Main Menu", choices, help: "(Use arrow keys, press enter to select)", show_help: :always, cycle:true, symbols: {marker: "→"})
@@ -49,24 +73,13 @@ class BookstoreApp
             self.search_menu
         when 2
             puts "Welcome to your personal bookshelf!".bold
-            i = 0
-        
-            Bookshelf.where(user_id: $current_user.id).each do |book|
-                @@personal_bookshelf << book
-                BoxPuts.show(
-                    :align => "center",
-                    :title => "Book #{i += 1}",
-                    :lines => ["Title: #{book.title}",
-                        "Author: #{book.author}",
-                        "Categories: #{book.categories}",
-                        "ISBN: #{book.isbn}",
-                        "Average Price: $#{book.price}"]
-                )
-            end
-
+            self.display_bookshelf
             self.display_bookshelf_menu
         when 3
             self.display_bookshelf_menu
+        when 4
+            puts "Thank you for visiting the bookstore!"
+            exit 1
         else
             puts "Error: You have entered an invalid response"
         end
@@ -78,29 +91,31 @@ class BookstoreApp
         choices = [
             {name: "Author", value: 1},
             {name: "Genre", value: 2},
-            {name: "Title", value: 3}
+            {name: "Title", value: 3},
+            {name: "Google Books ID", value: 4}
         ]
 
         user_input = prompt.select("Search By:", choices, cycle:true, symbols: {marker: "→"})
         
         case user_input
         when 1
-            puts "Enter author's name:"
-            author = gets.chomp.gsub(/\s+/, '+')
+            author = prompt.ask("Enter author's name:").gsub(/\s+/, '+')
             booklist = BookList.new(search_category: "inauthor:", search_term: author)
             booklist.print_books
         when 2
-            puts "Enter genre:"
-            genre = gets.chomp.gsub(/\s+/, '+')
+            genre = prompt.ask("Enter genre:").gsub(/\s+/, '+')
             booklist = BookList.new(search_category: "subject:", search_term: genre)
             booklist.print_books
         when 3
-            puts "Enter title:"
-            title = gets.chomp.gsub(/\s+/, '+')
+            title = prompt.ask("Enter title:").gsub(/\s+/, '+')
             booklist = BookList.new(search_category: "intitle:", search_term: title)
             booklist.print_books
+        when 4
+            id = prompt.ask("Enter ID:")
+            book = Book.new(id)
+            book.print_book_details
         else  
-            puts "Error: You have entered an invalid response."
+            prompt.error("Error: You have entered an invalid response.")
         end
         puts ""
         puts "________________________".cyan
@@ -110,8 +125,8 @@ class BookstoreApp
         end
             case response
             when true
-                puts "Enter the ID of your chosen book:"
-                id = gets.chomp
+                book_number = prompt.ask("Enter the # of your chosen book:")
+                id = BookList.get_book_id_by_number(book_number)
                 book = Book.new(id)
                 book.print_book_details
             when false
@@ -120,53 +135,35 @@ class BookstoreApp
     end
 
     def self.display_bookshelf_menu
+        prompt = TTY::Prompt.new(active_color: :cyan)
         puts "________________________".cyan
-        puts "Bookshelf Menu".bold
-        puts "add".bold + " -- adds a book to your bookshelf using book ID"
-        puts "delete".bold + " -- deletes book from your bookshelf"
-        puts "exit".bold + " -- back to main menu"
-        puts "________________________".cyan
-        puts "Choice:"
-        response = gets.chomp
 
-        case response
-        when "add"
-            puts "Please enter book ID here:"
-            id = gets.chomp
-            book = Book.new(id)
-            book.save_book
-        when "delete"
-            puts "Enter bookshelf book number here:"
-            book_array_index = gets.chomp.to_i - 1
+        choices = [
+            {name: "Add".bold+ " -- Search for books to add to your bookshelf", value: 1},
+            {name: "Delete".bold+ " -- Deletes book from your bookshelf", value: 2},
+            {name: "Exit".bold+ " -- Back to main menu", value: 3}
+        ]
+
+        user_input = prompt.select("Bookshelf Menu", choices, cycle: true, symbols: {marker: "→"})
+
+        case user_input
+        when 1
+            self.search_menu
+        when 2
+            book_array_index = prompt.ask("Please enter book number:").to_i - 1
             book_to_delete = @@personal_bookshelf[book_array_index]
             Bookshelf.destroy(book_to_delete.id)
+            prompt.ok("You have succesfully removed #{book_to_delete.title} from your bookshelf.")
             self.display_bookshelf_menu
-        when "exit"
+        when 3
             self.display_menu
         else 
-            puts "Error: You have entered an invalid response."
+            prompt.error("Error: You have entered an invalid response")
+            self.display_bookshelf_menu
         end
 
-    end
-
-    def self.test_prompt
-
-        user_input = prompt.select("Which menu would you like to go to?", help: "(Use arrow keys, press enter to select)", show_help: :always, cycle:true, symbols: {marker: "→"}) do |menu|
-            menu.default 3
-
-            menu.choice 'Main Menu'
-            menu.choice 'Book'
-            menu.choice 'Bookshelf'
-        end
-         
-        case user_input
-        when 'Main Menu'
-            self.display_menu
-        end
-
-        
     end
 end
-# BookstoreApp.start_app
+BookstoreApp.start_app
 BookstoreApp.display_menu
 # BookstoreApp.test_prompt

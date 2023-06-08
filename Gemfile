@@ -9,6 +9,7 @@ gem 'box_puts', '~> 1.0'
 gem "require_all"
 gem 'tty-link'
 gem 'tty-prompt'
+gem 'curses'
 
 group :development do 
     gem "pry"
