@@ -1,10 +1,7 @@
 require 'net/http'
 require 'open-uri'
 require 'json'
-require 'colorize'
 require 'box_puts'
-require_relative '../../config/environment.rb'
-require_relative './bookstore_app'
 require 'tty-prompt'
 
 class Book
@@ -25,33 +22,37 @@ class Book
     end
 
     def get_book_details
-        info = self.get_book
-        @title = info["volumeInfo"]["title"]
-        @author = info["volumeInfo"]["authors"]
-        @isbn = info["volumeInfo"]["industryIdentifiers"].select{|isbn| isbn["type"] == "ISBN_10"}[0]["identifier"]
-        @summary = info["volumeInfo"]["description"].gsub(/<[^>]*>/, "")
-
-        if info["volumeInfo"]["categories"].nil?
-            @categories = "No categories listed"
+        if self.get_book.nil?
+            puts "Oh no! We are unable to get information for this book"
+            BookstoreApp.display_menu
         else
-            categories_string = info["volumeInfo"]["categories"].join(" / ")
-            unique_categories = categories_string.split(" / ").uniq.join(" / ")
-            @categories = unique_categories
-        end
+            info = self.get_book
+            @title = info["volumeInfo"]["title"]
+            @author = info["volumeInfo"]["authors"]
+            @isbn = info["volumeInfo"]["industryIdentifiers"].select{|isbn| isbn["type"] == "ISBN_10"}[0]["identifier"]
+            @summary = info["volumeInfo"]["description"].gsub(/<[^>]*>/, "")
 
-        if info["saleInfo"]["listPrice"].nil?
-            @price = "No price listed"
-        else
-            retail_price = info["saleInfo"]["listPrice"]
-            price = retail_price["amount"]
-            currency = retail_price["currencyCode"]
-            @price = price
-        end
+            if info["volumeInfo"]["categories"].nil?
+                @categories = "No categories listed"
+            else
+                categories_string = info["volumeInfo"]["categories"].first
+                @categories = categories_string
+            end
 
-        if info["volumeInfo"]["infoLink"].nil?
-            @info_link = "No link listed"
-        else 
-            @info_link = info["volumeInfo"]["infoLink"]
+            if info["saleInfo"]["listPrice"].nil?
+                @price = "No price listed"
+            else
+                retail_price = info["saleInfo"]["listPrice"]
+                price = retail_price["amount"]
+                currency = retail_price["currencyCode"]
+                @price = price
+            end
+
+            if info["volumeInfo"]["infoLink"].nil?
+                @info_link = "No link listed"
+            else 
+                @info_link = info["volumeInfo"]["infoLink"]
+            end
         end
     end
 
@@ -74,35 +75,29 @@ class Book
     def self.display_book_menu 
         prompt = TTY::Prompt.new(active_color: :cyan)
         choices = [
-            {name: "Summary -- Returns summary of book", value: 1},
-            {name: "Link -- Provides a link to the Google Books page with more info", value: 2},
-            {name: "Save -- Saves book to your personal bookshelf", value: 3},
-            {name: "Exit -- Back to main menu", value: 4}
+            {name: "Summary".bold+" -- Returns summary of book", value: 1},
+            {name: "Link".bold+" -- Provides a link to the Google Books page with more info", value: 2},
+            {name: "Save".bold+" -- Saves book to your personal bookshelf", value: 3},
+            {name: "Main Menu".bold+" -- Back to main menu", value: 4},
+            {name: "Exit".bold+ " -- Exit the bookstore"}
         ]
         user_input = prompt.select("Book Menu", choices, cycle: true, symbols: {marker: "→"})
-
-        begin
     
-            case user_input
-            when 1
-                puts "Summary:".bold + "#{@@book_instance.summary}"
-                self.return_to_main_menu
-            when 2
-                puts TTY::Link.link_to("Click here for more info ", "#{@@book_instance.info_link}")
-                self.return_to_main_menu
-            when 3
-                @@book_instance.save_book
-            when 4
-                BookstoreApp.display_menu
-            else 
-                puts "Error: You have entered an invalid response"
-                self.display_book_menu
-            end
-
-        rescue Errno::ENOENT
-            puts "Unfortunately, Google Books doesn't hold the information you are requesting for this book."
+        case user_input
+        when 1
+            puts "Summary:".bold + "#{@@book_instance.summary}"
+            self.return_to_main_menu
+        when 2
+            puts TTY::Link.link_to("Click here for more info ", "#{@@book_instance.info_link}")
+            self.return_to_main_menu
+        when 3
+            @@book_instance.save_book
+        when 4
+            BookstoreApp.display_menu
+        when 5 
+            prompt.ok("Thank you for visiting The Bookstore!")
+            exit
         end
-
     end
 
     def self.return_to_main_menu

@@ -1,17 +1,15 @@
 require "colorize"
 require_relative '../../config/environment.rb'
 require_relative './user'
-require_relative './book_list.rb'
-require_relative './book'
+require_relative './bookshelf'
 require "tty-prompt"
-require "curses"
 
 class BookstoreApp 
     @@personal_bookshelf = []
     
     def self.start_app
         prompt = TTY::Prompt.new(active_color: :cyan)
-        puts "Welcome to our bookstore!"
+        puts "Welcome to The Bookstore!"
         
         bookshelf_color = Pastel.new.white.on_black.bold.detach
         bookshelf_img = bookshelf_color.("
@@ -58,7 +56,7 @@ class BookstoreApp
         
     def self.display_menu
         help_color = Pastel.new.blue.italic.detach
-        prompt = TTY::Prompt.new(active_color: :cyan, help_color: help_color)
+        prompt = TTY::Prompt.new(active_color: :cyan)
         choices = [
             {name: 'Search'.bold+' -- search for books by author, genre, or title', value: 1},
             {name: 'Bookshelf'.bold+' --returns your personal bookshelf', value: 2},
@@ -66,7 +64,7 @@ class BookstoreApp
             {name: 'Exit'.bold+' -- Exit the bookstore', value: 4}
         ]
 
-        user_input = prompt.select("Main Menu", choices, help: "(Use arrow keys, press enter to select)", show_help: :always, cycle:true, symbols: {marker: "→"})
+        user_input = prompt.select("Main Menu", choices, cycle:true, symbols: {marker: "→"})
         
         case user_input
         when 1
@@ -78,10 +76,8 @@ class BookstoreApp
         when 3
             self.display_bookshelf_menu
         when 4
-            puts "Thank you for visiting the bookstore!"
-            exit 1
-        else
-            puts "Error: You have entered an invalid response"
+            prompt.ok("Thank you for visiting The Bookstore!")
+            exit
         end
 
     end
@@ -92,30 +88,35 @@ class BookstoreApp
             {name: "Author", value: 1},
             {name: "Genre", value: 2},
             {name: "Title", value: 3},
-            {name: "Google Books ID", value: 4}
+            {name: "ISBN", value: 4}
         ]
-
+        max = prompt.slider("How many books would you like returned?", min:5, max: 30, step: 5)
         user_input = prompt.select("Search By:", choices, cycle:true, symbols: {marker: "→"})
         
         case user_input
         when 1
-            author = prompt.ask("Enter author's name:").gsub(/\s+/, '+')
-            booklist = BookList.new(search_category: "inauthor:", search_term: author)
+            author = prompt.ask("Enter author's name:", required: true).gsub(/\s+/, '+')
+            booklist = BookList.new(search_category: "inauthor:", search_term: author, max: max + 10)
             booklist.print_books
         when 2
-            genre = prompt.ask("Enter genre:").gsub(/\s+/, '+')
-            booklist = BookList.new(search_category: "subject:", search_term: genre)
+            genre = prompt.ask("Enter genre:", required: true).gsub(/\s+/, '+')
+            booklist = BookList.new(search_category: "subject:", search_term: genre, max: max + 10)
             booklist.print_books
         when 3
-            title = prompt.ask("Enter title:").gsub(/\s+/, '+')
-            booklist = BookList.new(search_category: "intitle:", search_term: title)
+            title = prompt.ask("Enter title:", required: true).gsub(/\s+/, '+')
+            booklist = BookList.new(search_category: "intitle:", search_term: title, max: max + 10)
             booklist.print_books
         when 4
-            id = prompt.ask("Enter ID:")
-            book = Book.new(id)
-            book.print_book_details
-        else  
-            prompt.error("Error: You have entered an invalid response.")
+            isbn = prompt.ask("Enter ISBN:", required: true)
+            book_id = nil
+            booklist = BookList.new(search_category: "isbn:", search_term: isbn).get_books
+            
+            booklist.each do |book|
+                id = book["id"]
+                book_id = id
+            end
+
+            Book.new(book_id).print_book_details
         end
         puts ""
         puts "________________________".cyan
@@ -141,7 +142,8 @@ class BookstoreApp
         choices = [
             {name: "Add".bold+ " -- Search for books to add to your bookshelf", value: 1},
             {name: "Delete".bold+ " -- Deletes book from your bookshelf", value: 2},
-            {name: "Exit".bold+ " -- Back to main menu", value: 3}
+            {name: "Main Menu".bold+ " -- Back to main menu", value: 3},
+            {name: "Exit".bold+" -- Exit the bookstore", value: 4}
         ]
 
         user_input = prompt.select("Bookshelf Menu", choices, cycle: true, symbols: {marker: "→"})
@@ -150,20 +152,24 @@ class BookstoreApp
         when 1
             self.search_menu
         when 2
-            book_array_index = prompt.ask("Please enter book number:").to_i - 1
-            book_to_delete = @@personal_bookshelf[book_array_index]
-            Bookshelf.destroy(book_to_delete.id)
-            prompt.ok("You have succesfully removed #{book_to_delete.title} from your bookshelf.")
-            self.display_bookshelf_menu
+            answer = prompt.yes?("Are you sure you want to delete a book from your bookshelf?")
+                case answer
+                when true 
+                    book_array_index = prompt.ask("Please enter book number:", required: true).to_i - 1
+                    book_to_delete = @@personal_bookshelf[book_array_index]
+                    Bookshelf.destroy(book_to_delete.id)
+                    prompt.ok("You have succesfully removed #{book_to_delete.title} from your bookshelf.")
+                    self.display_bookshelf_menu
+                when false
+                    self.display_bookshelf_menu
+                end
         when 3
             self.display_menu
-        else 
-            prompt.error("Error: You have entered an invalid response")
-            self.display_bookshelf_menu
+        when 4
+            prompt.ok("Thank you for visiting The Bookstore!")
+            exit
         end
-
     end
 end
 BookstoreApp.start_app
 BookstoreApp.display_menu
-# BookstoreApp.test_prompt
