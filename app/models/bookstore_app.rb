@@ -5,7 +5,6 @@ require_relative './bookshelf'
 require "tty-prompt"
 
 class BookstoreApp 
-    @@personal_bookshelf = []
     
     def self.start_app
         prompt = TTY::Prompt.new(active_color: :cyan)
@@ -29,33 +28,8 @@ class BookstoreApp
             last_name = prompt.ask("Please enter your last name:")
             $current_user = User.find_or_create_by(first_name: first_name, last_name: last_name)
     end
-
-    def self.display_bookshelf
-        prompt = TTY::Prompt.new(active_color: :cyan)
-        i = 0
-        bookshelf = Bookshelf.where(user_id: $current_user.id)
-
-        if bookshelf.empty?
-            prompt.ok("Your bookshelf is currently empty!")
-        else
-            bookshelf.each do |book|
-            @@personal_bookshelf << book
-            BoxPuts.show(
-                :align => "center",
-                :title => "Book #{i += 1}",
-                :lines => ["Title: #{book.title}",
-                    "Author: #{book.author}",
-                    "Categories: #{book.categories}",
-                    "ISBN: #{book.isbn}",
-                    "Average Price: $#{book.price}"]
-            )
-            end
-        end
-        self.display_bookshelf_menu
-    end
         
     def self.display_menu
-        help_color = Pastel.new.blue.italic.detach
         prompt = TTY::Prompt.new(active_color: :cyan)
         choices = [
             {name: 'Search'.bold+' -- search for books by author, genre, or title', value: 1},
@@ -71,10 +45,10 @@ class BookstoreApp
             self.search_menu
         when 2
             puts "Welcome to your personal bookshelf!".bold
-            self.display_bookshelf
+            Bookshelf.display_bookshelf
             self.display_bookshelf_menu
         when 3
-            self.display_bookshelf_menu
+            Bookshelf.display_bookshelf_menu
         when 4
             prompt.ok("Thank you for visiting The Bookstore!")
             exit
@@ -86,7 +60,7 @@ class BookstoreApp
         prompt = TTY::Prompt.new(active_color: :cyan)
         choices = [
             {name: "Author", value: 1},
-            {name: "Genre", value: 2},
+            {name: "Subject", value: 2},
             {name: "Title", value: 3},
             {name: "ISBN", value: 4}
         ]
@@ -99,8 +73,8 @@ class BookstoreApp
             booklist = BookList.new(search_category: "inauthor:", search_term: author, max: max + 10)
             booklist.print_books
         when 2
-            genre = prompt.ask("Enter genre:", required: true).gsub(/\s+/, '+')
-            booklist = BookList.new(search_category: "subject:", search_term: genre, max: max + 10)
+            subject = prompt.ask("Enter subject:", required: true).gsub(/\s+/, '+')
+            booklist = BookList.new(search_category: "subject:", search_term: subject, max: max + 10)
             booklist.print_books
         when 3
             title = prompt.ask("Enter title:", required: true).gsub(/\s+/, '+')
@@ -135,41 +109,6 @@ class BookstoreApp
             end
     end
 
-    def self.display_bookshelf_menu
-        prompt = TTY::Prompt.new(active_color: :cyan)
-        puts "________________________".cyan
-
-        choices = [
-            {name: "Add".bold+ " -- Search for books to add to your bookshelf", value: 1},
-            {name: "Delete".bold+ " -- Deletes book from your bookshelf", value: 2},
-            {name: "Main Menu".bold+ " -- Back to main menu", value: 3},
-            {name: "Exit".bold+" -- Exit the bookstore", value: 4}
-        ]
-
-        user_input = prompt.select("Bookshelf Menu", choices, cycle: true, symbols: {marker: "→"})
-
-        case user_input
-        when 1
-            self.search_menu
-        when 2
-            answer = prompt.yes?("Are you sure you want to delete a book from your bookshelf?")
-                case answer
-                when true 
-                    book_array_index = prompt.ask("Please enter book number:", required: true).to_i - 1
-                    book_to_delete = @@personal_bookshelf[book_array_index]
-                    Bookshelf.destroy(book_to_delete.id)
-                    prompt.ok("You have succesfully removed #{book_to_delete.title} from your bookshelf.")
-                    self.display_bookshelf_menu
-                when false
-                    self.display_bookshelf_menu
-                end
-        when 3
-            self.display_menu
-        when 4
-            prompt.ok("Thank you for visiting The Bookstore!")
-            exit
-        end
-    end
 end
 BookstoreApp.start_app
 BookstoreApp.display_menu

@@ -15,6 +15,7 @@ class BookList
     end
 
     def get_books
+        prompt = TTY::Prompt.new
         url = "https://www.googleapis.com/books/v1/volumes?q=#{self.search_category}#{self.search_term}&maxResults=#{self.max}&filter=partial&langRestrict=en"
         uri = URI.parse(url)
         response = Net::HTTP.get_response(uri)
@@ -23,7 +24,7 @@ class BookList
             data = JSON.parse(response.body)
 
             if data["totalItems"] == 0
-                puts "Oh no! There are no results matching your search. Please try again."
+                prompt.error("Oh no! There are no results matching your search. Please try again.")
                 BookstoreApp.display_menu
             elsif data.key?('items')
                 unique_titles = []
@@ -40,7 +41,7 @@ class BookList
                 
             end
         else
-            puts "Oh no! We are having trouble retrieving your request. Please try again."
+            prompt.error("Oh no! We are having trouble retrieving your request. Please try again.")
             BookstoreApp.display_menu
         end
     end

@@ -22,8 +22,9 @@ class Book
     end
 
     def get_book_details
+        prompt = TTY::Prompt.new
         if self.get_book.nil?
-            puts "Oh no! We are unable to get information for this book"
+            prompt.error("Oh no! We are unable to get information for this book")
             BookstoreApp.display_menu
         else
             info = self.get_book
@@ -119,14 +120,11 @@ class Book
                 categories: self.categories,
                 price: self.price,
                 isbn: self.isbn,
-                user_id: $current_user.id, #fix this later - global variables are bad practice
+                user_id: $current_user.id, 
                 google_book_id: book_id
             )
             puts "#{self.title} has been added to your personal bookshelf.".bold.cyan
             
-            BookstoreApp.display_bookshelf
+            Bookshelf.display_bookshelf
     end
 end
-
-# new_book = Book.new("ZMwAEAAAQBAJ")
-# new_book.print_book_details
