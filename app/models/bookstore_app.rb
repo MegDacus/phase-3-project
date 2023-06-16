@@ -64,21 +64,23 @@ class BookstoreApp
             {name: "Title", value: 3},
             {name: "ISBN", value: 4}
         ]
-        max = prompt.slider("How many books would you like returned?", min:5, max: 30, step: 5)
+       
         user_input = prompt.select("Search By:", choices, cycle:true, symbols: {marker: "→"})
         
         case user_input
         when 1
+            max = prompt.slider("How many books would you like returned?", min:5, max: 30, step: 5)
             author = prompt.ask("Enter author's name:", required: true).gsub(/\s+/, '+')
             booklist = BookList.new(search_category: "inauthor:", search_term: author, max: max + 10)
             booklist.print_books
         when 2
+            max = prompt.slider("How many books would you like returned?", min:5, max: 30, step: 5)
             subject = prompt.ask("Enter subject:", required: true).gsub(/\s+/, '+')
             booklist = BookList.new(search_category: "subject:", search_term: subject, max: max + 10)
             booklist.print_books
         when 3
             title = prompt.ask("Enter title:", required: true).gsub(/\s+/, '+')
-            booklist = BookList.new(search_category: "intitle:", search_term: title, max: max + 10)
+            booklist = BookList.new(search_category: "intitle:", search_term: title)
             booklist.print_books
         when 4
             isbn = prompt.ask("Enter ISBN:", required: true)

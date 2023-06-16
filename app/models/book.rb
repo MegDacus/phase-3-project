@@ -30,8 +30,13 @@ class Book
             info = self.get_book
             @title = info["volumeInfo"]["title"]
             @author = info["volumeInfo"]["authors"]
-            @isbn = info["volumeInfo"]["industryIdentifiers"].select{|isbn| isbn["type"] == "ISBN_10"}[0]["identifier"]
             @summary = info["volumeInfo"]["description"].gsub(/<[^>]*>/, "")
+
+            if info["volumeInfo"]["industryIdentifiers"].nil?
+                @isbn = "No ISBN listed"
+            else  
+                @isbn = info["volumeInfo"]["industryIdentifiers"].select{|isbn| isbn["type"] == "ISBN_10"}[0]["identifier"]
+            end
 
             if info["volumeInfo"]["categories"].nil?
                 @categories = "No categories listed"
@@ -125,6 +130,6 @@ class Book
             )
             puts "#{self.title} has been added to your personal bookshelf.".bold.cyan
             
-            Bookshelf.display_bookshelf
+            BookstoreApp.display_menu
     end
 end
